@@ -1,0 +1,134 @@
+name: Docker Image CI
+
+on:
+  push:
+    branches: [ develop ]
+  pull_request:
+    branches: [ develop ]
+
+jobs:
+
+  #build:
+
+    #runs-on: ubuntu-latest
+
+    #steps:
+    #- uses: actions/checkout@v2
+    #- name: Build the Docker image
+    #  run: docker build . --file Dockerfile --tag my-image-name:$(date +%s)
+      
+      
+ build-image-pr:
+    runs-on: ubuntu-20.04
+    if: github.event.pull_request.head.repo.full_name == github.repository
+
+    strategy:
+      matrix:
+        release: ['official', 'preview']
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v1
+        with:
+          registry: ghcr.io
+          username: ${{ secrets.CR_USER }}
+          password: ${{ secrets.CR_PAT }}
+
+      - name: Free disk space
+        run: |
+          sudo swapoff -a
+          sudo rm -f /swapfile
+          sudo apt clean
+          docker rmi $(docker image ls -aq)
+          df -h
+      # - name: Cache node modules
+      #   id: cache-nodemodules
+      #   uses: actions/cache@v2
+      #   with:
+      #     path: |
+      #       ./node_modules
+      #       ./ee/server/services/node_modules
+      #     key: ${{ runner.OS }}-node_modules-4-${{ hashFiles('**/package-lock.json', '.github/workflows/build_and_test.yml') }}
+
+      - name: Cache meteor local
+        uses: actions/cache@v2
+        with:
+          path: ./.meteor/local
+          key: ${{ runner.OS }}-meteor_cache-${{ hashFiles('.meteor/versions', '.github/workflows/build_and_test.yml') }}
+
+      - name: Cache meteor
+        uses: actions/cache@v2
+        with:
+          path: ~/.meteor
+          key: ${{ runner.OS }}-meteor-${{ hashFiles('.meteor/release', '.github/workflows/build_and_test.yml') }}
+
+      - name: Use Node.js 14.18.3
+        uses: actions/setup-node@v3
+        with:
+          node-version: '14.18.3'
+
+      - name: Install Meteor
+        run: |
+          # Restore bin from cache
+          set +e
+          METEOR_SYMLINK_TARGET=$(readlink ~/.meteor/meteor)
+          METEOR_TOOL_DIRECTORY=$(dirname "$METEOR_SYMLINK_TARGET")
+          set -e
+          LAUNCHER=$HOME/.meteor/$METEOR_TOOL_DIRECTORY/scripts/admin/launch-meteor
+          if [ -e $LAUNCHER ]
+          then
+            echo "Cached Meteor bin found, restoring it"
+            sudo cp "$LAUNCHER" "/usr/local/bin/meteor"
+          else
+            echo "No cached Meteor bin found."
+          fi
+          # only install meteor if bin isn't found
+          command -v meteor >/dev/null 2>&1 || curl https://install.meteor.com | sed s/--progress-bar/-sL/g | /bin/sh
+      - name: Versions
+        run: |
+          npm --versions
+          node -v
+          meteor --version
+          meteor npm --versions
+          meteor node -v
+          git version
+      - name: npm install
+        # if: steps.cache-nodemodules.outputs.cache-hit != 'true'
+        run: |
+          meteor npm install
+      # To reduce memory need during actual build, build the packages solely first
+      # - name: Build a Meteor cache
+      #   run: |
+      #     # to do this we can clear the main files and it build the rest
+      #     echo "" > server/main.ts
+      #     echo "" > client/main.ts
+      #     sed -i.backup 's/rocketchat:livechat/#rocketchat:livechat/' .meteor/packages
+      #     meteor build --server-only --debug --directory /tmp/build-temp
+      #     git checkout -- server/main.ts client/main.ts .meteor/packages
+
+      - name: Build Rocket.Chat
+        run: |
+          meteor build --server-only --directory /tmp/build-pr
+      - name: Build Docker image for PRs
+        run: |
+          cd /tmp/build-pr
+          LOWERCASE_REPOSITORY=$(echo "${{ github.repository_owner }}" | tr "[:upper:]" "[:lower:]")
+          IMAGE_NAME="rocket.chat"
+          if [[ '${{ matrix.release }}' = 'preview' ]]; then
+            IMAGE_NAME="${IMAGE_NAME}.preview"
+          fi;
+          IMAGE_NAME="ghcr.io/${LOWERCASE_REPOSITORY}/${IMAGE_NAME}:pr-${{ github.event.number }}"
+          echo "Build official Docker image ${IMAGE_NAME}"
+          DOCKER_PATH="${GITHUB_WORKSPACE}/.docker"
+          if [[ '${{ matrix.release }}' = 'preview' ]]; then
+            DOCKER_PATH="${DOCKER_PATH}-mongo"
+          fi;
+          echo "Build ${{ matrix.release }} Docker image"
+          cp ${DOCKER_PATH}/Dockerfile .
+          if [ -e ${DOCKER_PATH}/entrypoint.sh ]; then
+            cp ${DOCKER_PATH}/entrypoint.sh .
+          fi;
+          docker build -t $IMAGE_NAME .
+          docker push $IMAGE_NAME
