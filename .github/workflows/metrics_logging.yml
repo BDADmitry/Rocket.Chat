@@ -1,4 +1,4 @@
-name: Deploy Prometheus and EFK
+name: Deploy Service Applications
 
 on: [workflow_dispatch]
 
@@ -23,13 +23,19 @@ jobs:
         credentials_json: '${{ secrets.GCR_KEY }}'
 
     # ... further steps are automatically authenticated
-    - name: Deployment to GCP
+    - name: Deployment Prometheus_Grafana to GCP
       run: |
         gcloud container clusters get-credentials rocket --zone=us-central1-a
-        helm repo add bitnami https://charts.bitnami.com/bitnami
         helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
+        helm upgrade -i -n metrics kube-prometheus-stack prometheus-community/kube-prometheus-stack --create-namespace  --set grafana.adminPassword=admin --version 34.7.1
+    - name: Deployment EFK to GCP
+      run: |
+        helm repo add bitnami https://charts.bitnami.com/bitnami
         helm repo add fluent https://fluent.github.io/helm-charts
-        helm upgrade kube-prometheus-stack prometheus-community/kube-prometheus-stack --create-namespace -i -n metrics --set grafana.adminPassword=admin --version 34.7.1
-        helm upgrade --create-namespace -i -n logging elastic bitnami/elasticsearch --set global.kibanaEnabled=true --set data.replicas=1
+        helm upgrade -i -n logging elastic bitnami/elasticsearch --create-namespace --set global.kibanaEnabled=true --set data.replicas=1
         helm upgrade -i -n logging fluent-bit fluent/fluent-bit -f ./Rocket-Team/CD/values.yaml
+    - name: Deployment Kasten to GCP
+      run: |
+        helm repo add kasten https://charts.kasten.io/
+        helm upgrade -i -n backup k10 kasten/k10 --create-namespace
     
