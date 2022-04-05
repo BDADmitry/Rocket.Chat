@@ -33,7 +33,7 @@ jobs:
         helm repo add bitnami https://charts.bitnami.com/bitnami
         helm repo add fluent https://fluent.github.io/helm-charts
         helm upgrade -i -n logging elastic bitnami/elasticsearch --create-namespace --set global.kibanaEnabled=true --set data.replicas=1
-        helm upgrade -i -n logging fluent-bit fluent/fluent-bit -f ./Rocket-Team/CD/values.yaml
+        helm upgrade -i -n logging fluent-bit fluent/fluent-bit -f ./Rocket-Team/CD/manifests/fluent-bit/values.yaml
     - name: Deployment Kasten to GCP
       run: |
         helm repo add kasten https://charts.kasten.io/
