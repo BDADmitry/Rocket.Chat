@@ -1,4 +1,4 @@
-name: Deployment to GCP
+name: Deployment to Kubernetes cluster
 
 on: [workflow_dispatch]
 
