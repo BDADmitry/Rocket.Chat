@@ -6,13 +6,7 @@ on: [workflow_dispatch]
 jobs:
   deploy:
     runs-on: ubuntu-20.04
-    # ...
-
-    # Add "id-token" with the intended permissions.
-    permissions:
-      contents: 'read'
-      id-token: 'write'
-
+    
     steps:
     - uses: 'actions/checkout@v3'
 
