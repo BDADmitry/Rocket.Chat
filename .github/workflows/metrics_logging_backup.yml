@@ -21,17 +21,17 @@ jobs:
       run: |
         gcloud container clusters get-credentials rocket --zone=us-central1-a
         helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
-        helm upgrade -i -n metrics kube-prometheus-stack prometheus-community/kube-prometheus-stack --create-namespace  --set grafana.adminPassword=admin --version 34.7.1
+        helm upgrade -i -n metrics kube-prometheus-stack prometheus-community/kube-prometheus-stack --create-namespace --set grafana.adminPassword=admin --version 34.7.1
         
     - name: Deployment EFK to GCP
       run: |
         helm repo add bitnami https://charts.bitnami.com/bitnami
         helm repo add fluent https://fluent.github.io/helm-charts
-        helm upgrade -i -n logging elastic bitnami/elasticsearch --create-namespace --set global.kibanaEnabled=true
-        helm upgrade -i -n logging fluent-bit fluent/fluent-bit -f ./Rocket-Team/CD/manifests/fluent-bit/values.yaml
+        helm upgrade -i -n logging elastic bitnami/elasticsearch --create-namespace --set global.kibanaEnabled=true --version 17.9.24
+        helm upgrade -i -n logging fluent-bit fluent/fluent-bit -f ./Rocket-Team/CD/manifests/fluent-bit/values.yaml --version 0.19.23
         
     - name: Deployment Kasten to GCP
       run: |
         helm repo add kasten https://charts.kasten.io/
-        helm upgrade -i -n backup k10 kasten/k10 --create-namespace
+        helm upgrade -i -n backup k10 kasten/k10 --create-namespace --version 4.5.12
     
