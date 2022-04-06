@@ -32,7 +32,7 @@ spec:
         runAsUser: 999
       containers:
       - name: rocketchat
-        image: gcr.io/hale-carport-345014/rocket-chat@sha256:f5b01e4e25116e765cbeb94f10f66e708ac72a22b9f921a65dfe524870fe6a50
+        image: gcr.io/hale-carport-345014/rocket-chat@sha256:bd56424d21e1eb096209695986b7aa16202ebb23de34e5742896a572ccded7bf
         imagePullPolicy: IfNotPresent
         env:
         - name: INSTANCE_IP
