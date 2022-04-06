@@ -44,3 +44,5 @@ Post-installation steps:
 
 5. Run Kibana via port-forwarding, add index pattern `logstash-*` and get some logs from cluster namespaces
 ![Result](https://github.com/alex-punkster/Rocket.Chat/blob/master/Rocket-Team/img/elastic.png?raw=true)
+
+
